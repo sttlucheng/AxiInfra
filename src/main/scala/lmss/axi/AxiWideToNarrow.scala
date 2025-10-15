@@ -94,7 +94,7 @@ class AxiWideToNarrow(mstParams: AxiParams, slvParams: AxiParams, buffer:Int) ex
   private val rwm = mrgMskVec(rwa)
   for(i <- mrgMskVec.indices) {
     for(j <- mrgMskVec(i).indices) {
-      when(io.mst.ar.fire && arsel.bits === i.U) {
+      when(io.mst.ar.fire && arsel.bits(i)) {
         mrgMskVec(i)(j) := io.mst.ar.bits.addr(log2Ceil(mdw / 8) - 1, log2Ceil(sdw / 8)) === j.U
       }.elsewhen(io.slv.r.fire && rwa === i.U) {
         mrgMskVec(i)(j) := mrgMskVec(i)((j + seg - 1) % seg)
