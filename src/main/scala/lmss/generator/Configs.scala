@@ -28,7 +28,7 @@ class LmssConfig extends Config((site, here, up) => {
       PortParams(axip = AxiParams(dataBits = 512), async = Some(AsyncQueueParams()), name = "ec_tpu_3"),
     ),
     mstp = Seq(
-      PortParams(axip = AxiParams(dataBits = 32), async = Some(AsyncQueueParams()), name = "pmc", addr = AddressParams(0x50_8000_000L, 0x10_0000L)),
+      PortParams(axip = AxiParams(dataBits = 32), async = Some(AsyncQueueParams()), name = "pmc", addr = AddressParams(0x50_8000_0000L, 0x10_0000L)),
     ),
     // Memory Interleaving: 12 Bits, Base 0x8000_0000, Size: 0x40_0000_0000
     memp = Seq(
