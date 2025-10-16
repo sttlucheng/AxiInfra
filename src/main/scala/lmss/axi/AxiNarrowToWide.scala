@@ -87,13 +87,3 @@ class AxiNarrowToWide(mstParams: AxiParams, slvParams: AxiParams, buffer:Int) ex
   io.mst.r.bits.id := infoSel.id
   io.slv.r.ready := io.mst.r.ready
 }
-
-object AxiNarrowToWide {
-  def apply(slv: AxiBundle, mst:AxiBundle, outstanding:Int):AxiNarrowToWide = {
-    val wadpt = Module(new AxiNarrowToWide(slv.params, mst.params, outstanding))
-    wadpt.io.mst <> mst
-    slv <> wadpt.io.slv
-    wadpt
-  }
-  def apply(slv: AxiBundle, mst:AxiBundle):AxiNarrowToWide = apply(slv, mst, 4)
-}
