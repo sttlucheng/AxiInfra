@@ -7,9 +7,11 @@ import lmss.mem.MemoryBank
 import lmss.param.LmssParamsKey
 import org.chipsalliance.cde.config.Parameters
 import org.chipsalliance.diplomacy.lazymodule.LazyModule
+import lmss.param.PortParams
 
-class LaomaXbar(mstParams:Seq[AxiParams], slvMatchers:Seq[UInt => Bool]) extends BaseAxiXbar(mstParams) {
+class LaomaXbar(mstParams:Seq[AxiParams], slvMatchers:Seq[UInt => Bool], memParams: Seq[PortParams]) extends BaseAxiXbar(mstParams, memParams) {
   override val slvMatchersSeq = slvMatchers
+  require(slvMatchersSeq.size == memParams.size)
   initialize()
 }
 
@@ -40,7 +42,7 @@ class LaomaSubsys(implicit p:Parameters) extends RawModule with ImplicitClock wi
     (adpt.m_axi, s_axi, s_clk, s_rst)
   }
 
-  private val xbar = Module(new LaomaXbar(slvs.map(_._1.params), (lmssP.mstp ++ lmssP.memp).map(_.addr.test)))
+  private val xbar = Module(new LaomaXbar(slvs.map(_._1.params), (lmssP.mstp ++ lmssP.memp).map(_.addr.test), (lmssP.mstp ++ lmssP.memp)))
   xbar.io.upstream.zip(slvs.map(_._1)).foreach({ case(a, b) => a <> b })
 
   private val mstPs = xbar.io.downstream.take(lmssP.mstp.size)

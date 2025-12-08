@@ -214,5 +214,11 @@ package object axi {
     def getNext(addr: UInt, size: UInt, byteMask: UInt): UInt = {
       (~byteMask & addr | (addr + (1.U(6.W) << size)) & byteMask)
     }
+    def greaterAllones(comparand: UInt, constant: Int): Bool = {
+      require((constant & (constant + 1)) == 0)
+      val width = log2Ceil(constant + 1)
+      require(comparand.getWidth > width)
+      comparand(comparand.getWidth - 1, width).orR
+    }
   }
 }

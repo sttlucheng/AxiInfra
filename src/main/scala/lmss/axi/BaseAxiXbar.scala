@@ -3,9 +3,16 @@ package lmss.axi
 import chisel3._
 import chisel3.util._
 import xs.utils.ResetRRArbiter
+import lmss.param.{LmssParamsKey, PortParams}
 
-abstract class BaseAxiXbar(mstParams:Seq[AxiParams]) extends Module {
+abstract class BaseAxiXbar(mstParams:Seq[AxiParams], memParams: Seq[PortParams]) extends Module {
   def slvMatchersSeq: Seq[UInt => Bool]
+  def addrMatchSlvs(addr: UInt): UInt = {
+    val hits: Vec[Bool] = VecInit(memParams.map {port =>
+      port.addr.test(addr)  
+    })
+    hits.asUInt
+  }
   private lazy val _slvP = AxiSlvParamsCalc(mstParams)
   private lazy val dataBits = _slvP.dataBits
   private lazy val mstMaxIdBits = mstParams.map(_.idBits).max
@@ -24,6 +31,7 @@ abstract class BaseAxiXbar(mstParams:Seq[AxiParams]) extends Module {
   private def writeReqConn(): Unit = {
     val awDnStrmRdyMat = Wire(Vec(mstSize, Vec(slvSize, Bool())))
     val wDnStrmRdyMat = Wire(Vec(mstSize, Vec(slvSize, Bool())))
+    val wSlvOrderVec  = Seq.fill(mstSize) {Module(new Queue(UInt(slvSize.W), 8))}
     dontTouch(awDnStrmRdyMat)
     dontTouch(wDnStrmRdyMat)
     awDnStrmRdyMat.suggestName("awDnStrmRdyMat")
@@ -40,28 +48,29 @@ abstract class BaseAxiXbar(mstParams:Seq[AxiParams]) extends Module {
       io.downstream(sidx).aw <> awQueue.io.deq
       io.downstream(sidx).w <> wQueue.io.deq
 
+      val record = if(mstSize > 1) UIntToOH(arb.io.out.bits.id(extraBitsRange._1, extraBitsRange._2)) else 1.U
+
       arb.io.out.ready := awQueue.io.enq.ready && recordQueue.io.enq.ready
       recordQueue.io.enq.valid := arb.io.out.valid && awQueue.io.enq.ready
       awQueue.io.enq.valid := arb.io.out.valid && recordQueue.io.enq.ready
 
-      val record = if(mstSize > 1) UIntToOH(arb.io.out.bits.id(extraBitsRange._1, extraBitsRange._2)) else 1.U
       recordQueue.io.enq.bits := record
       awQueue.io.enq.bits := arb.io.out.bits
       val wSelV = WireInit(Mux1H(recordQueue.io.deq.bits, io.upstream.map(_.w.valid)))
       wSelV.suggestName(s"w_sel_vld_$sidx")
       dontTouch(wSelV)
-      wQueue.io.enq.valid := recordQueue.io.deq.valid && wSelV
+      wQueue.io.enq.valid := recordQueue.io.deq.valid && wSelV && wDnStrmRdyMat(OHToUInt(recordQueue.io.deq.bits))(sidx)
       wQueue.io.enq.bits := Mux1H(recordQueue.io.deq.bits, io.upstream.map(_.w.bits))
       recordQueue.io.deq.ready := wQueue.io.enq.fire && wQueue.io.enq.bits._last
 
       for(midx <- mstParams.indices) {
         val wreq = io.upstream(midx).aw
         val ain = arb.io.in(midx)
-        ain.valid := wreq.valid && slvMatchersSeq(sidx)(wreq.bits.addr)
+        ain.valid := wreq.valid && slvMatchersSeq(sidx)(wreq.bits.addr) && wSlvOrderVec(midx).io.enq.ready
         ain.bits := wreq.bits
         if(mstSize > 1) ain.bits.id := Cat(midx.U(extraIdBits.W), wreq.bits.id.asTypeOf(UInt(mstMaxIdBits.W)))
         awDnStrmRdyMat(midx)(sidx) := ain.ready && slvMatchersSeq(sidx)(wreq.bits.addr)
-        wDnStrmRdyMat(midx)(sidx) := wQueue.io.enq.ready && recordQueue.io.deq.valid && recordQueue.io.deq.bits(midx)
+        wDnStrmRdyMat(midx)(sidx) := wQueue.io.enq.ready && recordQueue.io.deq.valid && recordQueue.io.deq.bits(midx) && wSlvOrderVec(midx).io.deq.valid && wSlvOrderVec(midx).io.deq.bits(sidx)
         when(wreq.valid) {
           assert(PopCount(awDnStrmRdyMat(midx)) <= 1.U, s"AW channel downstream ready mat matrix! @ master $midx row $sidx")
         }
@@ -71,7 +80,10 @@ abstract class BaseAxiXbar(mstParams:Seq[AxiParams]) extends Module {
       }
     }
     for(midx <- mstParams.indices) {
-      io.upstream(midx).aw.ready := io.upstream(midx).aw.valid && Cat(awDnStrmRdyMat(midx)).orR
+      wSlvOrderVec(midx).io.enq.bits  := addrMatchSlvs(io.upstream(midx).aw.bits.addr)
+      wSlvOrderVec(midx).io.enq.valid := io.upstream(midx).aw.valid && Cat(awDnStrmRdyMat(midx)).orR
+      wSlvOrderVec(midx).io.deq.ready := io.upstream(midx).w.fire && io.upstream(midx).w.bits._last
+      io.upstream(midx).aw.ready := io.upstream(midx).aw.valid && Cat(awDnStrmRdyMat(midx)).orR && wSlvOrderVec(midx).io.enq.ready
       io.upstream(midx).w.ready := io.upstream(midx).w.valid && Cat(wDnStrmRdyMat(midx)).orR
     }
   }
