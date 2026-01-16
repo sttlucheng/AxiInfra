@@ -104,7 +104,7 @@ class AxiWideToNarrowRead(mstParams: AxiParams, slvParams: AxiParams, buffer:Int
   private val rTailPtr      = RegInit(CirQAxiEntryPtr(f = false.B, v = 0.U))
 
   private val mrgMskVec     = Reg(Vec(buffer, Vec(seg, Bool())))
-  private val spiltCtrlVec  = Reg(Vec(buffer, new RSplitBundle(mstParams, buffer)))
+  private val spiltCtrlVec  = RegInit(VecInit(Seq.fill(buffer)((new RSplitBundle(mstParams, buffer)).Lit(_.valid -> false.B))))
   private val maxNid        = Fill(log2Ceil(buffer), true.B)
 
   private val ctrlFreeVec   = VecInit(spiltCtrlVec.map(_.valid))

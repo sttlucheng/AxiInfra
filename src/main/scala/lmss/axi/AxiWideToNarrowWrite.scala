@@ -60,6 +60,7 @@ class PipeAwInfo(mstParams: AxiParams) extends Bundle {
     this
   }
 }
+
 class awShiftBundle(mstParams: AxiParams) extends Bundle {
   val addr    = UInt(12.W)
   val size    = UInt(mstParams.sizeBits.W)
@@ -227,7 +228,7 @@ class AxiWideToNarrowWrite(mstParams: AxiParams, slvParams: AxiParams, buffer:In
   private val highIdx    = awAddrBits.addr(shiftHigh, shiftLow) + range
   for(i <- wq.io.enq.indices) {
     enqv(i) := (i.U >= lowIdx) && (i.U <= highIdx)
-    wq.io.enq(i).valid := io.uW.valid && wCtrlQ.io.enq.ready &&  Cat(wq.io.enq.map(_.ready)).andR && wLastCtlQ.io.deq.valid && enqv(i)
+    wq.io.enq(i).valid := io.uW.fire && enqv(i)
     wq.io.enq(i).bits.data := wdv(i)
     wq.io.enq(i).bits.strb := wmv(i)
     wq.io.enq(i).bits.user := io.uW.bits.user
@@ -269,7 +270,7 @@ class AxiWideToNarrowWrite(mstParams: AxiParams, slvParams: AxiParams, buffer:In
   wTailPtr                 := Mux(awSpiltDone, wTailPtr + 1.U, wTailPtr)
   
   io.uAw.ready             := awPipeQueue.io.enq.ready && !isFull(awHeadPtr, awTailPtr) && wCtrlQ.io.enq.ready
-  io.uW.ready              := wLastCtlQ.io.deq.valid && Cat(wq.io.enq.map(_.ready)).andR && wCtrlQ.io.deq.valid
+  io.uW.ready              := wLastCtlQ.io.deq.valid && wCtrlQ.io.deq.valid && ((buffer * seg).U -  wq.io.count) >= PopCount(enqv)
   io.dAw.valid             := !isEmpty(wHeadPtr, wTailPtr) && wLastCtlQ.io.enq.ready
   io.dAw.bits              := Mux(awTailInfo.awinfo.size > maxSlvSize.U, slvAwBits, awTailInfo.awinfo)
   io.dW.valid              := wq.io.deq.head.valid

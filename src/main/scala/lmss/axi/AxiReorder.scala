@@ -28,6 +28,7 @@ class AxiAWEtrBundle(axiP: AxiParams, buffer: Int) extends Bundle {
 }
 
 class AxiReorder(axiParams: AxiParams, buffer:Int) extends Module {
+  require(axiParams.lastBits != 0)
   override val desiredName = "AxiRecoder"
   val io = IO(new Bundle {
     val mst = Flipped(new AxiBundle(axiParams))

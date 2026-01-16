@@ -48,6 +48,8 @@ class AxiWidthRCvtBundle(axiP: AxiParams, outstanding: Int) extends Bundle {
 class AxiNarrowToWide(mstParams: AxiParams, slvParams: AxiParams, buffer:Int) extends Module with HasCircularQueuePtrHelper {
   override val desiredName = s"AxiWidthCvt${mstParams.dataBits}To${slvParams.dataBits}"
   private class CirQAxiEntryPtr extends CircularQueuePtr[CirQAxiEntryPtr](buffer)
+  require(mstParams.lastBits != 0)
+  require(slvParams.lastBits != 0)
   private object CirQAxiEntryPtr {
   def apply(f: Bool, v: UInt): CirQAxiEntryPtr = {
         val ptr = Wire(new CirQAxiEntryPtr)
