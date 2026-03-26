@@ -9,6 +9,7 @@ import chisel3.experimental.noPrefix
 import chisel3.experimental.BundleLiterals._
 import xs.utils.{CircularQueuePtr, HasCircularQueuePtrHelper}
 import xs.utils.queue.RegInQueue
+import xs.utils.queue.FastQueue
 import lmss.axi.AxiComputeFunction.greaterAllones
 import xs.utils.sram.DualPortSramTemplate
 
@@ -97,11 +98,11 @@ class AxiWideToNarrowRead(mstParams: AxiParams, slvParams: AxiParams, buffer:Int
 /* 
  * Register declaration
  */
-  private val arinfo        = Reg(Vec(arPipeBuffer, new ArInfo(mstParams, slvParams)))
-  private val arPipeQueue   = Module(new Queue(new PipeArInfo(mstParams), 2, true))
-  private val rq            = Module(new Queue(UInt(log2Ceil(buffer).W), 1, pipe = true))
-  private val rHeadPtr      = RegInit(CirQAxiEntryPtr(f = false.B, v = 0.U))
-  private val rTailPtr      = RegInit(CirQAxiEntryPtr(f = false.B, v = 0.U))
+  private val arinfo      = Reg(Vec(arPipeBuffer, new ArInfo(mstParams, slvParams)))
+  private val arPipeQueue = Module(new FastQueue(new PipeArInfo(mstParams), 2))
+  private val rq          = Module(new Queue(UInt(log2Ceil(buffer).W), 1, pipe = true))
+  private val rHeadPtr    = RegInit(CirQAxiEntryPtr(f = false.B, v = 0.U))
+  private val rTailPtr    = RegInit(CirQAxiEntryPtr(f = false.B, v = 0.U))
 
   private val mrgMskVec     = Reg(Vec(buffer, Vec(seg, Bool())))
   private val spiltCtrlVec  = RegInit(VecInit(Seq.fill(buffer)((new RSplitBundle(mstParams, buffer)).Lit(_.valid -> false.B))))

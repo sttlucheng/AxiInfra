@@ -10,3 +10,4 @@ build
 .metal
 .metals
 .bloop
+tmp

@@ -6,6 +6,7 @@ import xs.utils.PickOneLow
 import chisel3.experimental.noPrefix
 import AxiComputeFunction._
 import xs.utils.{CircularQueuePtr, HasCircularQueuePtrHelper}
+import xs.utils.queue.FastQueue
 
 class AxiWidthWCvtBundle(axiP: AxiParams) extends Bundle {
   val addrSfx = UInt(12.W)
@@ -62,21 +63,21 @@ class AxiNarrowToWide(mstParams: AxiParams, slvParams: AxiParams, buffer:Int) ex
     val mst = Flipped(new AxiBundle(mstParams))
     val slv = new AxiBundle(slvParams)
   })
-  private val mdw = mstParams.dataBits
-  private val sdw = slvParams.dataBits
-  private val seg = sdw / mdw
-  private val awinfo = Reg(Vec(buffer, new AxiWidthWCvtBundle(mstParams)))
-  private val wHeadPtr = RegInit(CirQAxiEntryPtr(f = false.B, v = 0.U))
-  private val wTailPtr = RegInit(CirQAxiEntryPtr(f = false.B, v = 0.U))
-  private val wq = Module(new Queue(new WFlit(mstParams), entries = 2))
-  private val rq = Module(new Queue(new RFlit(slvParams), entries = 1, pipe = true))
-  private val arvld = RegInit(VecInit(Seq.fill(buffer)(false.B)))
-  private val arinfo = Reg(Vec(buffer, new AxiWidthRCvtBundle(mstParams, buffer)))
-  private val arsel = PickOneLow(arvld)
-  private val infoSelOH = Wire(Vec(buffer, Bool()))
-  private val nidCalcVec = Wire(Vec(buffer, Bool()))
-  private val rawNid = PopCount(nidCalcVec)
-  private val cncrtWkVld = io.mst.r.fire && io.mst.ar.fire && io.mst.r.bits._last && io.mst.r.bits.id === io.mst.ar.bits.id
+  private val mdw           = mstParams.dataBits
+  private val sdw           = slvParams.dataBits
+  private val seg           = sdw / mdw
+  private val awinfo        = Reg(Vec(buffer, new AxiWidthWCvtBundle(mstParams)))
+  private val wHeadPtr      = RegInit(CirQAxiEntryPtr(f = false.B, v = 0.U))
+  private val wTailPtr      = RegInit(CirQAxiEntryPtr(f = false.B, v = 0.U))
+  private val wq            = Module(new FastQueue(new WFlit(mstParams), size = 2))
+  private val rq            = Module(new Queue(new RFlit(slvParams), entries = 1, pipe = true))
+  private val arvld         = RegInit(VecInit(Seq.fill(buffer)(false.B)))
+  private val arinfo        = Reg(Vec(buffer, new AxiWidthRCvtBundle(mstParams, buffer)))
+  private val arsel         = PickOneLow(arvld)
+  private val infoSelOH     = Wire(Vec(buffer, Bool()))
+  private val nidCalcVec    = Wire(Vec(buffer, Bool()))
+  private val rawNid        = PopCount(nidCalcVec)
+  private val cncrtWkVld    = io.mst.r.fire && io.mst.ar.fire && io.mst.r.bits._last && io.mst.r.bits.id === io.mst.ar.bits.id
   private val cncrtWkVldReg = RegNext(cncrtWkVld)
   private val cncrtWkEtrReg = RegEnable(arsel.bits, cncrtWkVld)
   require(mdw <= sdw)

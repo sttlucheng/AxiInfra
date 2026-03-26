@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 import xs.utils.PickOneLow
 import xs.utils.queue.MimoQueue
+import xs.utils.queue.FastQueue
 import chisel3.experimental.noPrefix
 import chisel3.experimental.BundleLiterals._
 import xs.utils.{CircularQueuePtr, HasCircularQueuePtrHelper}
@@ -111,14 +112,14 @@ class AxiWideToNarrowWrite(mstParams: AxiParams, slvParams: AxiParams, buffer:In
  * Register declaration
  */
   private val awinfo      = Reg(Vec(awPipeBuffer, new AwInfo(mstParams, slvParams)))  
-  private val awPipeQueue = Module(new Queue(new PipeAwInfo(mstParams), 2, true))
+  private val awPipeQueue = Module(new FastQueue(new PipeAwInfo(mstParams), 2))
   private val wCounter    = RegInit(0.U(mstParams.lenBits.W))
   private val wq          = Module(new MimoQueue(new WFlit(slvParams), seg, 1, buffer * seg, false))
   private val binfo       = RegInit(VecInit(Seq.fill(buffer) {new binfo(mstParams, buffer).Lit(_.valid -> false.B)}))
   private val wHeadPtr    = RegInit(CirQAxiEntryPtr(f = false.B, v = 0.U))
   private val wTailPtr    = RegInit(CirQAxiEntryPtr(f = false.B, v = 0.U))
-  private val wLastCtlQ   = Module(new Queue(UInt((mstParams.lenBits).W), buffer, true))
-  private val wCtrlQ      = Module(new Queue(Bool(), buffer, true))
+  private val wLastCtlQ   = Module(new FastQueue(UInt((mstParams.lenBits).W), buffer))
+  private val wCtrlQ      = Module(new FastQueue(Bool(), buffer))
   private val awAddrInfo  = Reg(Vec(buffer, new awShiftBundle(mstParams)))
   private val awHeadPtr   = RegInit(CirQWEntryPtr(f = false.B, v = 0.U))
   private val awTailPtr   = RegInit(CirQWEntryPtr(f = false.B, v = 0.U))

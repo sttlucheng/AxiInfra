@@ -3,6 +3,7 @@ package lmss.axi
 import chisel3._
 import chisel3.util._
 import xs.utils.ResetRRArbiter
+import xs.utils.queue.FastQueue
 import lmss.param.{LmssParamsKey, PortParams}
 
 abstract class BaseAxiXbar(mstParams:Seq[AxiParams], memParams: Seq[PortParams]) extends Module {
@@ -37,10 +38,10 @@ abstract class BaseAxiXbar(mstParams:Seq[AxiParams], memParams: Seq[PortParams])
     awDnStrmRdyMat.suggestName("awDnStrmRdyMat")
     wDnStrmRdyMat.suggestName("wDnStrmRdyMat")
     for(sidx <- slvParams.indices) {
-      val recordQueue = Module(new Queue(UInt(mstSize.W), entries = 16))
-      val awQueue = Module(new Queue(new AWFlit(slvParams(sidx)), entries = 2))
-      val wQueue = Module(new Queue(new WFlit(slvParams(sidx)), entries = 2))
-      val arb = Module(new ResetRRArbiter(new AWFlit(slvParams(sidx)), mstParams.length))
+      val recordQueue = Module(new FastQueue(UInt(mstSize.W), size = 16))
+      val awQueue     = Module(new FastQueue(new AWFlit(slvParams(sidx)), size = 2))
+      val wQueue      = Module(new FastQueue(new WFlit(slvParams(sidx)), size = 2))
+      val arb         = Module(new ResetRRArbiter(new AWFlit(slvParams(sidx)), mstParams.length))
       recordQueue.suggestName(s"aw_rq_$sidx")
       arb.suggestName(s"aw_arb_$sidx")
       awQueue.suggestName(s"aw_q_$sidx")
@@ -59,8 +60,9 @@ abstract class BaseAxiXbar(mstParams:Seq[AxiParams], memParams: Seq[PortParams])
       val wSelV = WireInit(Mux1H(recordQueue.io.deq.bits, io.upstream.map(_.w.valid)))
       wSelV.suggestName(s"w_sel_vld_$sidx")
       dontTouch(wSelV)
-      wQueue.io.enq.valid := recordQueue.io.deq.valid && wSelV && wDnStrmRdyMat(OHToUInt(recordQueue.io.deq.bits))(sidx)
-      wQueue.io.enq.bits := Mux1H(recordQueue.io.deq.bits, io.upstream.map(_.w.bits))
+      wQueue.io.enq.valid      := recordQueue.io.deq.valid && wSelV && wDnStrmRdyMat(OHToUInt(recordQueue.io.deq.bits))(sidx)
+      wQueue.io.enq.bits       := Mux1H(recordQueue.io.deq.bits, io.upstream.map(_.w.bits))
+      wQueue.io.enq.bits.last  := Mux1H(recordQueue.io.deq.bits, io.upstream.map(u => if(u.w.bits.last.getWidth == 0) 1.U else u.w.bits.last))
       recordQueue.io.deq.ready := wQueue.io.enq.fire && wQueue.io.enq.bits._last
 
       for(midx <- mstParams.indices) {
@@ -93,8 +95,8 @@ abstract class BaseAxiXbar(mstParams:Seq[AxiParams], memParams: Seq[PortParams])
     dontTouch(arDnStrmRdyMat)
     arDnStrmRdyMat.suggestName("arDnStrmRdyMat")
     for(sidx <- slvParams.indices) {
-      val arQueue = Module(new Queue(new ARFlit(slvParams(sidx)), entries = 2))
-      val arb = Module(new ResetRRArbiter(new ARFlit(slvParams(sidx)), mstParams.length))
+      val arQueue = Module(new FastQueue(new ARFlit(slvParams(sidx)), size = 2))
+      val arb     = Module(new ResetRRArbiter(new ARFlit(slvParams(sidx)), mstParams.length))
       arb.suggestName(s"ar_arb_$sidx")
       arQueue.suggestName(s"ar_q_$sidx")
       io.downstream(sidx).ar <> arQueue.io.deq
@@ -122,8 +124,8 @@ abstract class BaseAxiXbar(mstParams:Seq[AxiParams], memParams: Seq[PortParams])
     dontTouch(bUpStrmRdyMat)
     bUpStrmRdyMat.suggestName("bUpStrmRdyMat")
     for(midx <- mstParams.indices) {
-      val bQueue = Module(new Queue(new BFlit(mstParams(midx)), entries = 2))
-      val arb = Module(new ResetRRArbiter(new BFlit(mstParams(midx)), slvParams.length))
+      val bQueue = Module(new FastQueue(new BFlit(mstParams(midx)), size = 2))
+      val arb    = Module(new ResetRRArbiter(new BFlit(mstParams(midx)), slvParams.length))
       bQueue.suggestName(s"b_q_$midx")
       arb.suggestName(s"b_arb_$midx")
       io.upstream(midx).b <> bQueue.io.deq
@@ -152,8 +154,8 @@ abstract class BaseAxiXbar(mstParams:Seq[AxiParams], memParams: Seq[PortParams])
     dontTouch(rUpStrmRdyMat)
     rUpStrmRdyMat.suggestName("rUpStrmRdyMat")
     for(midx <- mstParams.indices) {
-      val rQueue = Module(new Queue(new RFlit(mstParams(midx)), entries = 2))
-      val arb = Module(new ResetRRArbiter(new RFlit(mstParams(midx)), slvParams.length))
+      val rQueue = Module(new FastQueue(new RFlit(mstParams(midx)), size = 2))
+      val arb    = Module(new ResetRRArbiter(new RFlit(mstParams(midx)), slvParams.length))
       rQueue.suggestName(s"r_queue_$midx")
       arb.suggestName(s"r_arb_$midx")
       io.upstream(midx).r <> rQueue.io.deq
