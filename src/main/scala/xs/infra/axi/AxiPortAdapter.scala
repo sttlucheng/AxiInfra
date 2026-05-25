@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: MulanPSL-2.0
 // Copyright (c) 2025-2026 RedRISC Technology Co. Ltd.
 
-package lmss.axi
+package xs.infra.axi
 
 import chisel3._
 import chisel3.experimental.noPrefix
-import lmss.param.{LmssParamsKey, PortParams}
 import org.chipsalliance.cde.config.Parameters
 
-class AxiInPortAdapter(port:PortParams)(implicit p:Parameters) extends RawModule {
+class AxiInPortAdapter(port:PortParams, outDataBits:Int)(implicit p:Parameters) extends RawModule {
   private val inP = port.axip
-  private val outP = port.axip.copy(dataBits = p(LmssParamsKey).internalDataBits)
+  private val outP = port.axip.copy(dataBits = outDataBits)
 
   val s_axi = IO(Flipped(new ExtAxiBundle(inP)))
   val s_clk = IO(Input(Clock()))
@@ -24,7 +23,7 @@ class AxiInPortAdapter(port:PortParams)(implicit p:Parameters) extends RawModule
   private val pipe = withClockAndReset(s_clk, s_rst) { Module(new AxiBufferChain(inP, port.pipe)) }
   pipe.io.in <> s_axi
 
-  if(port.axip.dataBits > p(LmssParamsKey).internalDataBits) noPrefix {
+  if(port.axip.dataBits > outDataBits) noPrefix {
     val cvt = withClockAndReset(s_clk, s_rst) { Module(new AxiWideToNarrow(inP, outP, port.outstanding)) }
     val reorder = withClockAndReset(m_clk, m_rst) { Module(new AxiReorder(inP, port.outstanding * 2))}
     val asyncSrc = withClockAndReset(s_clk, s_rst) { Option.when(cdc)(Module(new AxiAsyncSource(outP, port.async.get))) }
@@ -42,7 +41,7 @@ class AxiInPortAdapter(port:PortParams)(implicit p:Parameters) extends RawModule
     } else {
       m_axi <> cvt.io.slv
     }
-  } else if(port.axip.dataBits < p(LmssParamsKey).internalDataBits) noPrefix {
+  } else if(port.axip.dataBits < outDataBits) noPrefix {
     val asyncSrc = withClockAndReset(s_clk, s_rst) { Option.when(cdc)(Module(new AxiAsyncSource(inP, port.async.get))) }
     val asycnSink = withClockAndReset(m_clk, m_rst) { Option.when(cdc)(Module(new AxiAsyncSink(inP, port.async.get))) }
     val reorder = withClockAndReset(m_clk, m_rst) { Module(new AxiReorder(inP, port.outstanding * 2))}

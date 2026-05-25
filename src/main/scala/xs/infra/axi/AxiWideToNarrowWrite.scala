@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MulanPSL-2.0
 // Copyright (c) 2025-2026 RedRISC Technology Co. Ltd.
 
-package lmss.axi
+package xs.infra.axi
 
 import chisel3._
 import chisel3.util._
@@ -11,7 +11,7 @@ import xs.utils.queue.FastQueue
 import chisel3.experimental.noPrefix
 import chisel3.experimental.BundleLiterals._
 import xs.utils.{CircularQueuePtr, HasCircularQueuePtrHelper}
-import lmss.axi.AxiComputeFunction.greaterAllones
+import xs.infra.axi.AxiComputeFunction.greaterAllones
 
 class AwInfo(mstParams: AxiParams, slvParams: AxiParams) extends Bundle {
   val addrPfx      = UInt((mstParams.addrBits - 12).W)

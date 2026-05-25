@@ -11,7 +11,7 @@ task("rtl", function()
     local build_dir = option.get("build-dir")
     local rtl_dir = path.join(build_dir, "rtl")
 
-    local chisel_opts = {"-i", "lmss.runMain", "lmss.generator.LmssGenerator"}
+    local chisel_opts = {"-i", "test.runMain", "generator.LmssGenerator"}
     table.join2(chisel_opts, {"--throw-on-first-error", "--target", "systemverilog", "--split-verilog", "--full-stacktrace", "-td", rtl_dir})
 
     if os.exists(rtl_dir) then os.rmdir(rtl_dir) end
@@ -42,9 +42,11 @@ end)
 task("comp", function()
     on_run(function()
         if os.host() == "windows" then
-            os.execv("powershell", { "mill", "-i", "lmss.compile" })
+            os.execv("powershell", { "mill", "-i", "compile" })
+            os.execv("powershell", { "mill", "-i", "test.compile" })
         else
-            os.execv("mill", { "-i", "lmss.compile" })
+            os.execv("mill", { "-i", "compile" })
+            os.execv("mill", { "-i", "test.compile" })
         end
     end)
     set_menu {

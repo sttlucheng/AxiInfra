@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MulanPSL-2.0
 // Copyright (c) 2025-2026 RedRISC Technology Co. Ltd.
 
-package lmss
+package xs.infra
 
 import chisel3._
 import chisel3.util._
@@ -23,6 +23,28 @@ package object axi {
     regionBits: Int = 4,
     lastBits:Int = 1
   )
+
+  case class PortParams(
+    axip: AxiParams = AxiParams(),
+    async: Option[AsyncQueueParams] = None,
+    addr: AddressParams = AddressParams(),
+    pipe: Int = 2,
+    outstanding: Int = 32,
+    name: String = ""
+  )
+
+  case class AddressParams(
+    base: Long = 0x0L,
+    size: Long = 0x0L,
+    intv: Long = 0x0L,
+    mask: Long = 0x0L
+  ) {
+    def test(addr:UInt):Bool = {
+      val min = base.U
+      val max = (base + size).U
+      min <= addr && addr < max && (addr & mask.U) === intv.U
+    }
+  }
 
   def AxiSlvParamsCalc(in: Seq[AxiParams]): AxiParams = {
     AxiParams(

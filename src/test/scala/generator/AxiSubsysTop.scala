@@ -1,39 +1,44 @@
 // SPDX-License-Identifier: MulanPSL-2.0
 // Copyright (c) 2025-2026 RedRISC Technology Co. Ltd.
-
-package lmss
+package generator
 
 import chisel3._
 import chisel3.experimental.noPrefix
-import lmss.axi._
-import lmss.mem.MemoryBank
-import lmss.param.LmssParamsKey
 import org.chipsalliance.cde.config.Parameters
-import org.chipsalliance.diplomacy.lazymodule.LazyModule
-import lmss.param.PortParams
+import xs.infra.axi._
+import org.chipsalliance.cde.config.Field
 
-class LaomaXbar(mstParams:Seq[AxiParams], slvMatchers:Seq[UInt => Bool], memParams: Seq[PortParams]) extends BaseAxiXbar(mstParams, memParams) {
+case object AxiSubsysParamsKey extends Field[AxiSubsysParams]
+
+case class AxiSubsysParams(
+  slvp:Seq[PortParams] = Seq(),
+  mstp:Seq[PortParams] = Seq(),
+  memp:Seq[PortParams] = Seq(),
+  internalDataBits:Int = 256
+)
+
+class AxiSubsysXbar(mstParams:Seq[AxiParams], slvMatchers:Seq[UInt => Bool], memParams: Seq[PortParams]) extends BaseAxiXbar(mstParams, memParams) {
   override val slvMatchersSeq = slvMatchers
   require(slvMatchersSeq.size == memParams.size)
   initialize()
 }
 
-class LaomaSubsys(implicit p:Parameters) extends RawModule with ImplicitClock with ImplicitReset {
-  private val lmssP = p(LmssParamsKey)
+class AxiSubsysTop(implicit p:Parameters) extends RawModule with ImplicitClock with ImplicitReset {
+  private val subsysP = p(AxiSubsysParamsKey)
   val clock = IO(Input(Clock()))
   val reset = IO(Input(AsyncReset()))
 
   override val implicitClock = clock
   override val implicitReset = reset
-  require(lmssP.slvp.nonEmpty, "slave ports should not be empty!")
-  require((lmssP.mstp ++ lmssP.memp).nonEmpty, "master and memory ports should not be empty!")
+  require(subsysP.slvp.nonEmpty, "slave ports should not be empty!")
+  require((subsysP.mstp ++ subsysP.memp).nonEmpty, "master and memory ports should not be empty!")
 
-  val slvs = for((sp, i) <- lmssP.slvp.zipWithIndex) yield noPrefix {
+  val slvs = for((sp, i) <- subsysP.slvp.zipWithIndex) yield noPrefix {
     val sfx = if(sp.name != "") sp.name else s"$i"
     val s_axi = IO(Flipped(new ExtAxiBundle(sp.axip)))
     val s_clk = sp.async.map(_ => IO(Input(Clock())))
     val s_rst = sp.async.map(_ => IO(Input(AsyncReset())))
-    val adpt = Module(new AxiInPortAdapter(sp))
+    val adpt = Module(new AxiInPortAdapter(sp, subsysP.internalDataBits))
     adpt.s_clk := s_clk.getOrElse(clock)
     adpt.s_rst := s_rst.getOrElse(reset)
     adpt.m_clk := clock
@@ -45,20 +50,20 @@ class LaomaSubsys(implicit p:Parameters) extends RawModule with ImplicitClock wi
     (adpt.m_axi, s_axi, s_clk, s_rst)
   }
 
-  private val xbar = Module(new LaomaXbar(slvs.map(_._1.params), (lmssP.mstp ++ lmssP.memp).map(_.addr.test), (lmssP.mstp ++ lmssP.memp)))
+  private val xbar = Module(new AxiSubsysXbar(slvs.map(_._1.params), (subsysP.mstp ++ subsysP.memp).map(_.addr.test), (subsysP.mstp ++ subsysP.memp)))
   xbar.io.upstream.zip(slvs.map(_._1)).foreach({ case(a, b) => a <> b })
 
-  private val mstPs = xbar.io.downstream.take(lmssP.mstp.size)
-  private val memPs =  xbar.io.downstream.drop(lmssP.mstp.size)
+  private val mstPs = xbar.io.downstream.take(subsysP.mstp.size)
+  private val memPs =  xbar.io.downstream.drop(subsysP.mstp.size)
 
-  private val mems = for(((pp, mp), i) <- lmssP.memp.zip(memPs).zipWithIndex) yield noPrefix {
+  private val mems = for(((pp, mp), i) <- subsysP.memp.zip(memPs).zipWithIndex) yield noPrefix {
     val sfx = if(pp.name != "") pp.name else s"$i"
     val mem_axi = IO(new ExtAxiBundle(mp.params))
     mem_axi.suggestName(s"mem_$sfx")
     mp <> mem_axi
   }
 
-  val msts = for(((pp, a), i) <- lmssP.mstp.zip(mstPs).zipWithIndex) yield noPrefix {
+  val msts = for(((pp, a), i) <- subsysP.mstp.zip(mstPs).zipWithIndex) yield noPrefix {
     val sfx = if(pp.name != "") pp.name else s"$i"
     val adpt = Module(new AxiOutPortAdapter(a.params, pp))
     val m_axi = IO(new ExtAxiBundle(adpt.m_axi.params))

@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: MulanPSL-2.0
 // Copyright (c) 2025-2026 RedRISC Technology Co. Ltd.
 
-package lmss.generator
+package generator
 
 import freechips.rocketchip.util.AsyncQueueParams
-import lmss.axi.AxiParams
-import lmss.param.{AddressParams, LmssParams, LmssParamsKey, PortParams}
+import xs.infra.axi._
 import org.chipsalliance.cde.config.Config
 
-class LmssConfig extends Config((site, here, up) => {
-  case LmssParamsKey => LmssParams(
+class SubsysConfig extends Config((site, here, up) => {
+  case AxiSubsysParamsKey => AxiSubsysParams(
     internalDataBits = 256,
     slvp = Seq(
       PortParams(axip = AxiParams(), async = Some(AsyncQueueParams()), name = "pc_0"),

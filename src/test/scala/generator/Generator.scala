@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MulanPSL-2.0
 // Copyright (c) 2025-2026 RedRISC Technology Co. Ltd.
 
-package lmss.generator
+package generator
 
 import chisel3.stage.ChiselGeneratorAnnotation
 import circt.stage.{ChiselStage, FirtoolOption}
-import lmss.LaomaSubsys
 
 object Generator {
   val firtoolOpts = Seq(
@@ -23,8 +22,11 @@ object Generator {
 }
 
 object LmssGenerator extends App {
-  val config = new LmssConfig
+  chisel3.VerificationLayers.assertLayer = false
+  chisel3.VerificationLayers.coverLayer = false
+  chisel3.VerificationLayers.assumeLayer = false
+  val config = new SubsysConfig
   (new ChiselStage).execute(args, Generator.firtoolOpts ++ Seq(
-    ChiselGeneratorAnnotation(() => new LaomaSubsys()(config))
+    ChiselGeneratorAnnotation(() => new AxiSubsysTop()(config))
   ))
 }

@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: MulanPSL-2.0
 // Copyright (c) 2025-2026 RedRISC Technology Co. Ltd.
 
-package lmss.axi
+package xs.infra.axi
 
 import chisel3._
 import chisel3.util._
 import xs.utils.PickOneLow
 import chisel3.experimental.noPrefix
 import AxiComputeFunction._
-import xs.utils.{CircularQueuePtr, HasCircularQueuePtrHelper}
-import xs.utils.queue.FastQueue
+import xs.utils.queue.{CircularQueuePtr, HasCircularQueuePtrHelper, FastQueue}
 
 class AxiWidthWCvtBundle(axiP: AxiParams) extends Bundle {
   val addrSfx = UInt(12.W)

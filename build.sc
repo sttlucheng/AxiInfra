@@ -1,219 +1,237 @@
-import mill._
-import scalalib._
+package build
+import mill.*
+import scalalib.*
+import scalafmt.*
 
-// =============================================================================
-// Version constants - aligned with xs-utils/build.mill (Chisel 7.9.0)
-// =============================================================================
 object v {
-  val scala          = "2.13.18"
-  val chiselVersion  = "7.9.0"
+  val defaultScalaVersion = "2.13.18"
   val firtoolVersion = "1.140.0"
+  val chiselVersion = "7.9.0"
 
-  val chiselPlugin   = ivy"org.chipsalliance:::chisel-plugin:$chiselVersion"
-  val llvmFirtool    = ivy"org.chipsalliance:llvm-firtool:$firtoolVersion"
-  val scalatest      = ivy"org.scalatest::scalatest:3.2.19"
-  val scalacheck     = ivy"org.scalatestplus::scalacheck-1-18:3.2.19.0"
-  val json4sj        = ivy"org.json4s::json4s-jackson:4.0.7"
-  val mainargs       = ivy"com.lihaoyi::mainargs:0.5.0"
-  val sourcecode     = ivy"com.lihaoyi::sourcecode:0.4.4"
-  val osLib          = ivy"com.lihaoyi::os-lib:0.10.7"
-  val upickle        = ivy"com.lihaoyi::upickle:3.3.1"
-  val firtoolResolver = ivy"org.chipsalliance::firtool-resolver:2.0.1"
-  val scopt          = ivy"com.github.scopt::scopt:4.1.0"
-  val commonText     = ivy"org.apache.commons:commons-text:1.15.0"
-  val json4s         = ivy"io.github.json4s::json4s-native:4.1.0"
-  val dataclass      = ivy"io.github.alexarchambault::data-class:0.2.7"
-  val scalaReflect   = ivy"org.scala-lang:scala-reflect:$scala"
-  val unrollPlugin   = ivy"com.lihaoyi:::unroll-plugin:0.3.0"
-  val unrollAnno     = ivy"com.lihaoyi::unroll-annotation:0.3.0"
-}
+  val scalatest = mvn"org.scalatest::scalatest:3.2.19"
+  val scalacheck = mvn"org.scalatestplus::scalacheck-1-18:3.2.19.0"
+  val chisel = mvn"org.chipsalliance::chisel:$chiselVersion"
+  val chiselPlugin = mvn"org.chipsalliance:::chisel-plugin:$chiselVersion"
+  val llvmFirtool = mvn"org.chipsalliance:llvm-firtool:$firtoolVersion"
+  val json4sj = mvn"org.json4s::json4s-jackson:4.0.7"
+  val mainargs = mvn"com.lihaoyi::mainargs:0.5.0"
+  val sourcecode = mvn"com.lihaoyi::sourcecode:0.4.4"
+  val osLib = mvn"com.lihaoyi::os-lib:0.10.7"
+  val upickle = mvn"com.lihaoyi::upickle:3.3.1"
+  val firtoolResolver = mvn"org.chipsalliance::firtool-resolver:2.0.1"
+  val scopt = mvn"com.github.scopt::scopt:4.1.0"
+  val commonText = mvn"org.apache.commons:commons-text:1.15.0"
+  val json4s = mvn"io.github.json4s::json4s-native:4.1.0"
+  val dataclass = mvn"io.github.alexarchambault::data-class:0.2.7"
+  val mdoc = mvn"org.scalameta::mdoc:2.8.2"
+  val scalaReflect = mvn"org.scala-lang:scala-reflect:$defaultScalaVersion"
+  val unrollPlugin = mvn"com.lihaoyi:::unroll-plugin:0.3.0"
+  val unrollAnno = mvn"com.lihaoyi::unroll-annotation:0.3.0"
 
-val depBase = os.pwd / "xs-utils" / "dep"
+  val scalaCrossVersions = Seq(defaultScalaVersion, "3")
 
-// Common scalac options matching xs-utils/build.mill HasCommonOptions
-val warnConf = Seq(
-  "msg=APIs in chisel3.internal:s",
-  "msg=All APIs in package firrtl:s",
-  "msg=migration to the MLIR:s",
-  "msg=method hasDefiniteSize in trait IterableOnceOps is deprecated:s",
-  "msg=object JavaConverters in package collection is deprecated:s",
-  "msg=undefined in comment for method cf in class PrintableHelper:s",
-  "cat=deprecation&origin=firrtl\\.options\\.internal\\.WriteableCircuitAnnotation:s",
-  "cat=deprecation&origin=firrtl\\.logger.*:s",
-  "cat=deprecation&origin=chisel3\\.util\\.experimental\\.BoringUtils.*:s",
-  "cat=deprecation&origin=chisel3\\.experimental\\.IntrinsicModule:s",
-  "cat=deprecation&origin=chisel3\\.ltl.*:s",
-  "cat=deprecation&origin=chisel3\\.InstanceId:s",
-  "cat=deprecation&msg=Looking up Modules is deprecated:s",
-  "cat=deprecation&msg=Use of @instantiable on user-defined types is deprecated:s",
-  "cat=scala3-migration:s",
-  "msg=reading InlineInfoAttribute from firtoolresolver:s",
-  "msg=will no longer have a structural type:s"
-).mkString(",")
-
-val chiselCommonOptions = Agg(
-  "-deprecation",
-  "-feature",
-  "-unchecked",
-  "-Ymacro-annotations",
-  "-language:reflectiveCalls",
-  "-Xsource:3",
-  s"-Wconf:$warnConf"
-)
-
-// =============================================================================
-// Chisel sub-modules (split build matching xs-utils/build.mill structure)
-// =============================================================================
-
-// firrtl - IR definitions, no dependency on other chisel modules
-object chiselFirrtl extends SbtModule {
-  override def scalaVersion = v.scala
-  override def millSourcePath = depBase / "chisel" / "firrtl"
-  override def scalacOptions = super.scalacOptions() ++ chiselCommonOptions ++ Agg(
-    "-language:existentials",
-    "-language:implicitConversions",
-    "-Xsource-features:infer-override"
+  val scala2WarnConf = Seq(
+    "msg=APIs in chisel3.internal:s",
+    "msg=All APIs in package firrtl:s",
+    "msg=migration to the MLIR:s",
+    "msg=method hasDefiniteSize in trait IterableOnceOps is deprecated:s", // replacement `knownSize` is not in 2.12
+    "msg=object JavaConverters in package collection is deprecated:s",
+    "msg=undefined in comment for method cf in class PrintableHelper:s",
+    "cat=deprecation&origin=firrtl\\.options\\.internal\\.WriteableCircuitAnnotation:s",
+    "cat=deprecation&origin=firrtl\\.logger.*:s",
+    "cat=deprecation&origin=chisel3\\.util\\.experimental\\.BoringUtils.*:s",
+    "cat=deprecation&origin=chisel3\\.experimental\\.IntrinsicModule:s",
+    "cat=deprecation&origin=chisel3\\.ltl.*:s",
+    "cat=deprecation&origin=chisel3\\.InstanceId:s",
+    "cat=deprecation&msg=Looking up Modules is deprecated:s",
+    "cat=deprecation&msg=Use of @instantiable on user-defined types is deprecated:s",
+    "cat=scala3-migration:s",
+    "msg=reading InlineInfoAttribute from firtoolresolver:s",
+    "msg=will no longer have a structural type:s"
   )
-  override def ivyDeps = super.ivyDeps() ++ Agg(
-    v.scopt, v.commonText, v.osLib, v.json4s, v.dataclass
+
+  val scala2CommonOptions = Seq(
+    "-deprecation",
+    "-feature",
+    "-unchecked",
+    "-Werror",
+    "-Ymacro-annotations",
+    "-release:8",
+    "-explaintypes",
+    "-Xcheckinit",
+    "-Xlint:infer-any",
+    "-Xlint:missing-interpolator",
+    "-language:reflectiveCalls",
+    "-opt:l:inline",
+    "-opt-inline-from:chisel3.**",
+    "-Ymacro-annotations",
+    "-Xsource:3",
+    s"-Wconf:${(scala2WarnConf).mkString(",")}"
   )
 }
 
-// macros - defines @instantiable, @public and other macro annotations
-object chiselMacros extends SbtModule {
-  override def scalaVersion = v.scala
-  override def millSourcePath = depBase / "chisel" / "macros"
-  override def sources = T.sources(
-    millSourcePath / "src" / "main" / "scala-2"
-  )
-  override def scalacOptions = super.scalacOptions() ++ chiselCommonOptions
-  override def ivyDeps = super.ivyDeps() ++ Agg(v.scalaReflect)
+trait HasCommonOptions extends CrossModuleBase {
+  override def scalacOptions = super.scalacOptions() ++ v.scala2CommonOptions
 }
 
-// core - main chisel3 core, depends on firrtl + macros
-object chiselCore extends SbtModule {
-  override def scalaVersion = v.scala
-  override def millSourcePath = depBase / "chisel" / "core"
-  override def sources = T.sources(
-    millSourcePath / "src" / "main" / "scala",
-    millSourcePath / "src" / "main" / "scala-2"
-  )
-  override def moduleDeps = super.moduleDeps ++ Seq(chiselFirrtl, chiselMacros)
-  override def scalacOptions = super.scalacOptions() ++ chiselCommonOptions
-  override def ivyDeps = super.ivyDeps() ++ Agg(v.osLib, v.upickle, v.firtoolResolver)
+trait VersionSbtModule extends SbtModule {
+  def scalaVersion = v.defaultScalaVersion
+}
 
-  def buildInfo = T {
-    val outputFile = T.dest / "chisel3" / "BuildInfo.scala"
-    val firtoolVersionString = "Some(\"" + v.firtoolVersion + "\")"
-    val contents =
-      s"""
-         |package chisel3
-         |case object BuildInfo {
-         |  val buildInfoPackage: String = "chisel3"
-         |  val version: String = "${v.chiselVersion}"
-         |  val scalaVersion: String = "${v.scala}"
-         |  val firtoolVersion: scala.Option[String] = $firtoolVersionString
-         |  override val toString: String = {
-         |    "buildInfoPackage: %s, version: %s, scalaVersion: %s, firtoolVersion %s".format(
-         |        buildInfoPackage, version, scalaVersion, firtoolVersion
-         |    )
-         |  }
-         |}
-         |""".stripMargin
-    os.write(outputFile, contents, createFolders = true)
-    PathRef(T.dest)
+trait VersionCrossSbtModule extends CrossSbtModule {
+  def scalaVersion = v.defaultScalaVersion
+}
+
+object `package` extends VersionSbtModule with ScalafmtModule {
+
+  object dep extends VersionSbtModule {
+    object chisel extends Cross[xchisel](v.scalaCrossVersions)
+    trait xchisel extends VersionCrossSbtModule with HasCommonOptions {
+      override def moduleDeps = super.moduleDeps ++ Seq(
+        core(v.scalaCrossVersions(0)),
+        svsim(v.scalaCrossVersions(0))
+      )
+      override def scalacPluginMvnDeps = Seq(v.chiselPlugin)
+      override def scalacOptions = super.scalacOptions() ++ Seq(
+        "-language:reflectiveCalls",
+        "-Ytasty-reader"
+      )
+      def compileMvnDeps = Seq(v.scalatest)
+
+      object firrtl extends Cross[xfirrtl](v.scalaCrossVersions)
+      trait xfirrtl extends VersionCrossSbtModule with HasCommonOptions {
+        override def scalacOptions = super.scalacOptions() ++ Seq(
+          "-language:reflectiveCalls",
+          "-language:existentials",
+          "-language:implicitConversions",
+          "-Yrangepos",
+          "-Xsource-features:infer-override"
+        )
+        def mvnDeps = Seq(
+          v.scopt,
+          v.commonText,
+          v.osLib,
+          v.json4s,
+          v.dataclass
+        )
+      }
+
+      object macros extends Cross[xmacros](v.scalaCrossVersions)
+      trait xmacros extends VersionCrossSbtModule with HasCommonOptions {
+        def mvnDeps = Seq(v.scalaReflect)
+      }
+
+      object core extends Cross[xcore](v.scalaCrossVersions)
+      trait xcore extends VersionCrossSbtModule with HasCommonOptions {
+        override def moduleDeps = super.moduleDeps ++ Seq(
+          firrtl(v.scalaCrossVersions(0)),
+          macros(v.scalaCrossVersions(0))
+        )
+        def mvnDeps = Seq(
+          v.osLib,
+          v.upickle,
+          v.firtoolResolver
+        )
+
+        def buildInfo = Task {
+          val outputFile = Task.dest / "chisel3" / "BuildInfo.scala"
+          val firtoolVersionString = "Some(\"" + v.firtoolVersion + "\")"
+          val contents =
+            s"""
+               |package chisel3
+               |case object BuildInfo {
+               |  val buildInfoPackage: String = "chisel3"
+               |  val version: String = "${v.chiselVersion}"
+               |  val scalaVersion: String = "${v.defaultScalaVersion}"
+               |  val firtoolVersion: scala.Option[String] = $firtoolVersionString
+               |  override val toString: String = {
+               |    "buildInfoPackage: %s, version: %s, scalaVersion: %s, firtoolVersion %s".format(
+               |        buildInfoPackage, version, scalaVersion, firtoolVersion
+               |    )
+               |  }
+               |}
+               |""".stripMargin
+          os.write(outputFile, contents, createFolders = true)
+          PathRef(Task.dest)
+        }
+
+        override def generatedSources = Task {
+          super.generatedSources() :+ buildInfo()
+        }
+      }
+
+      object svsim extends Cross[xsvsim](v.scalaCrossVersions)
+      trait xsvsim extends VersionCrossSbtModule with HasCommonOptions {
+        override def scalacOptions = super.scalacOptions() ++ Seq(
+          "-Xsource-features:case-apply-copy-access"
+        )
+        def mvnDeps = Seq(
+          v.scalatest,
+          v.scalacheck
+        )
+        def compileMvnDeps = Seq(v.unrollAnno)
+        def scalacPluginMvnDeps = Seq(v.unrollPlugin)
+      }
+    }
+
+    trait CommonModule extends ScalaModule {
+      override def scalaVersion = v.defaultScalaVersion
+      override def scalacPluginMvnDeps = Seq(v.chiselPlugin)
+      override def scalacOptions = super.scalacOptions() ++ Seq(
+        "-language:reflectiveCalls",
+        "-Ymacro-annotations",
+        "-Ytasty-reader"
+      )
+      override def mvnDeps = super.mvnDeps() ++ Seq(v.llvmFirtool)
+      override def moduleDeps = super.moduleDeps ++ Seq(chisel(v.scalaCrossVersions(0)))
+    }
+
+    object cde extends CommonModule {
+      object cde extends CommonModule
+    }
+
+    object diplomacy extends CommonModule {
+      object diplomacy extends CommonModule {
+        override def moduleDeps = super.moduleDeps ++ Seq(cde.cde)
+        override def mvnDeps = super.mvnDeps() ++ Seq(v.sourcecode)
+      }
+    }
+
+    object hardfloat extends CommonModule with SbtModule {
+      object hardfloat extends CommonModule
+    }
+
+    object `rocket-chip` extends CommonModule with SbtModule {
+      override def moduleDeps = super.moduleDeps ++ Seq(
+        hardfloat.hardfloat,
+        cde.cde,
+        diplomacy.diplomacy,
+        macros
+      )
+      override def mvnDeps = super.mvnDeps() ++ Seq(
+        v.json4sj,
+        v.mainargs
+      )
+      object macros extends CommonModule with SbtModule
+    }
+
+    object `xs-utils` extends CommonModule with SbtModule {
+      override def moduleDeps = super.moduleDeps ++ Seq(`rocket-chip`)
+    }
   }
 
-  override def generatedSources = T { super.generatedSources() :+ buildInfo() }
-}
-
-// svsim - SystemVerilog simulation interface
-object chiselSvsim extends SbtModule {
-  override def scalaVersion = v.scala
-  override def millSourcePath = depBase / "chisel" / "svsim"
-  override def scalacOptions = super.scalacOptions() ++ chiselCommonOptions
-  override def compileIvyDeps = super.compileIvyDeps() ++ Agg(v.unrollAnno)
-  override def scalacPluginIvyDeps = super.scalacPluginIvyDeps() ++ Agg(v.unrollPlugin)
-}
-
-// chiselLib - top-level chisel library, re-exports everything
-object chiselLib extends SbtModule {
-  override def scalaVersion = v.scala
-  override def millSourcePath = depBase / "chisel"
-  override def sources = T.sources(
-    millSourcePath / "src" / "main" / "scala",
-    millSourcePath / "src" / "main" / "scala-2"
-  )
-  override def moduleDeps = super.moduleDeps ++ Seq(chiselCore, chiselSvsim)
-  override def scalacPluginIvyDeps = super.scalacPluginIvyDeps() ++ Agg(v.chiselPlugin)
-  override def scalacOptions = super.scalacOptions() ++ chiselCommonOptions ++ Agg(
-    "-Ytasty-reader"
-  )
-  override def compileIvyDeps = super.compileIvyDeps() ++ Agg(v.scalatest)
-}
-
-// =============================================================================
-// Common trait for modules that depend on Chisel
-// =============================================================================
-trait ChiselModule extends ScalaModule {
-  override def scalaVersion = v.scala
-  override def scalacPluginIvyDeps = super.scalacPluginIvyDeps() ++ Agg(v.chiselPlugin)
-  override def scalacOptions = super.scalacOptions() ++ Agg(
+  override def scalacPluginMvnDeps = Seq(v.chiselPlugin)
+  override def scalacOptions = super.scalacOptions() ++ Seq(
     "-language:reflectiveCalls",
     "-Ymacro-annotations",
-    "-Ytasty-reader",
-    "-Xsource:3",
-    s"-Wconf:$warnConf"
+    "-Ytasty-reader"
   )
-  override def ivyDeps = super.ivyDeps() ++ Agg(v.llvmFirtool)
-  override def moduleDeps = super.moduleDeps ++ Seq(chiselLib)
-}
+  override def mvnDeps = super.mvnDeps() ++ Seq(v.llvmFirtool)
+  override def moduleDeps = super.moduleDeps ++ Seq(dep.`xs-utils`)
 
-// =============================================================================
-// Infrastructure modules
-// =============================================================================
-
-object cde extends ChiselModule {
-  override def millSourcePath = depBase / "cde" / "cde"
-}
-
-object diplomacy extends ChiselModule {
-  override def millSourcePath = depBase / "diplomacy" / "diplomacy"
-  override def moduleDeps = super.moduleDeps ++ Seq(cde)
-  override def ivyDeps = super.ivyDeps() ++ Agg(v.sourcecode)
-}
-
-object rocketchip extends SbtModule with ChiselModule {
-  override def millSourcePath = depBase / "rocket-chip"
-  override def moduleDeps = super.moduleDeps ++ Seq(hardfloat, cde, diplomacy, macros)
-  override def ivyDeps = super.ivyDeps() ++ Agg(v.json4sj, v.mainargs)
-
-  object macros extends SbtModule with ChiselModule {
-    override def ivyDeps = super.ivyDeps() ++ Agg(v.scalaReflect)
-  }
-
-  object hardfloat extends SbtModule with ChiselModule {
-    override def millSourcePath = depBase / "hardfloat" / "hardfloat"
-  }
-}
-
-// =============================================================================
-// xs-utils
-// =============================================================================
-object xsutils extends SbtModule with ChiselModule {
-  override def millSourcePath = os.pwd / "xs-utils"
-  override def moduleDeps = super.moduleDeps ++ Seq(rocketchip, cde)
-}
-
-// =============================================================================
-// Main project - LaomaSubsystem
-// =============================================================================
-object lmss extends SbtModule with ChiselModule {
-  override def millSourcePath = os.pwd
-  override def moduleDeps = super.moduleDeps ++ Seq(rocketchip, xsutils)
-
-  object test extends SbtModuleTests with TestModule.ScalaTest {
-    override def ivyDeps = super.ivyDeps() ++ Agg(v.scalatest)
+  object test extends SbtTests with ScalafmtModule {
+    override def mvnDeps = super.mvnDeps() ++ Seq(v.scalatest)
     def testFramework = "org.scalatest.tools.Framework"
   }
 }
+

@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MulanPSL-2.0
 // Copyright (c) 2025-2026 RedRISC Technology Co. Ltd.
 
-package lmss.axi
+package xs.infra.axi
 
 import chisel3._
 import chisel3.util._
 import xs.utils.ResetRRArbiter
 import xs.utils.queue.FastQueue
-import lmss.param.{LmssParamsKey, PortParams}
 
 abstract class BaseAxiXbar(mstParams:Seq[AxiParams], memParams: Seq[PortParams]) extends Module {
   def slvMatchersSeq: Seq[UInt => Bool]

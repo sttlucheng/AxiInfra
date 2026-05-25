@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MulanPSL-2.0
 // Copyright (c) 2025-2026 RedRISC Technology Co. Ltd.
 
-package lmss.axi
+package xs.infra.axi
 
 
 import chisel3._
@@ -13,7 +13,7 @@ import chisel3.experimental.BundleLiterals._
 import xs.utils.{CircularQueuePtr, HasCircularQueuePtrHelper}
 import xs.utils.queue.RegInQueue
 import xs.utils.queue.FastQueue
-import lmss.axi.AxiComputeFunction.greaterAllones
+import xs.infra.axi.AxiComputeFunction.greaterAllones
 import xs.utils.sram.DualPortSramTemplate
 
 class PipeArInfo(mstParams: AxiParams) extends Bundle {

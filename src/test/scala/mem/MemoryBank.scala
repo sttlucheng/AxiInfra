@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MulanPSL-2.0
 // Copyright (c) 2025-2026 RedRISC Technology Co. Ltd.
 
-package lmss.mem
+package mem
 
 import chisel3._
 import chisel3.util._
 import freechips.rocketchip.amba.axi4.{AXI4MasterNode, AXI4MasterParameters, AXI4MasterPortParameters}
 import freechips.rocketchip.diplomacy.{AddressSet, IdRange}
-import lmss.axi.{AxiBundle, AxiParams, ExtAxiBundle}
+import xs.infra.axi.{AxiBundle, AxiParams, ExtAxiBundle}
 import org.chipsalliance.cde.config.Parameters
 import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 
