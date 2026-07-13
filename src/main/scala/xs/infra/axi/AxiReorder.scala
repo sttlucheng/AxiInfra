@@ -31,7 +31,7 @@ class AxiAWEtrBundle(axiP: AxiParams, buffer: Int) extends Bundle {
 
 class AxiReorder(axiParams: AxiParams, buffer: Int) extends Module {
   require(axiParams.lastBits != 0)
-  override val desiredName = "AxiRecoder"
+  override val desiredName = "AxiReorder"
   val io                   = IO(new Bundle {
     val mst = Flipped(new AxiBundle(axiParams))
     val slv = new AxiBundle(axiParams)
@@ -105,7 +105,7 @@ class AxiReorder(axiParams: AxiParams, buffer: Int) extends Module {
   for(i <- wvld.indices) noPrefix {
     val awMstFireHit = WireInit(io.mst.aw.fire && awsel.bits(i))
     awMstFireHit.suggestName(s"aw_mst_fire_hit_$i")
-    val bFireSlvHit = WireInit(io.slv.b.fire && arinfo(slvBHitEtr).bits.id === awinfo(i).id && wvld(i))
+    val bFireSlvHit = WireInit(io.slv.b.fire && awinfo(slvBHitEtr).id === awinfo(i).id && wvld(i))
     bFireSlvHit.suggestName(s"b_fire_slv_hit_$i")
     val awSlvFireHit = WireInit(io.slv.aw.fire && slvAWHitEtr === i.U)
     awSlvFireHit.suggestName(s"aw_slv_fire_hit_$i")
@@ -155,18 +155,18 @@ class AxiReorder(axiParams: AxiParams, buffer: Int) extends Module {
   io.mst.aw.ready   := awsel.valid && wq.io.enq.ready && awq.io.enq.ready
   io.mst.r.bits     := io.slv.r.bits
   io.mst.r.bits.id  := arinfo(slvRHitEtr).bits.id
-  io.mst.r.valid    := io.slv.r.valid
+  io.mst.r.valid    := io.slv.r.valid       
   io.mst.b.valid    := io.slv.b.valid
   io.mst.b.bits     := io.slv.b.bits
   io.mst.b.bits.id  := awinfo(slvBHitEtr).id
-  io.mst.w.ready    := wbitsq.io.enq.ready && wq.io.deq.valid
+  io.mst.w.ready    := wbitsq.io.enq.ready && wq.io.deq.valid     //io.mst.w.ready    := io.slv.w.ready && awinfo(wq.io.deq.bits).haveSendAW && wq.io.deq.valid
   io.slv.ar.bits    := arinfo(selSendAR).bits
   io.slv.ar.bits.id := selSendAR
   io.slv.ar.valid   := arShouldSend.reduce(_ | _)
   io.slv.aw.bits    := awq.io.deq.bits.awinfo
   io.slv.aw.bits.id := awq.io.deq.bits.entry
   io.slv.aw.valid   := awinfo(awq.io.deq.bits.entry).nid === 0.U && awq.io.deq.valid
-  io.slv.w.valid    := wbitsq.io.deq.valid && awinfo(wbitsq.io.deq.bits.entry).haveSendAW
+  io.slv.w.valid    := wbitsq.io.deq.valid && awinfo(wbitsq.io.deq.bits.entry).haveSendAW     //io.slv.w.valid    := io.mst.w.valid && awinfo(wq.io.deq.bits).haveSendAW && wq.io.deq.valid
   io.slv.w.bits     := wbitsq.io.deq.bits.winfo
   io.slv.r.ready    := io.mst.r.ready
   io.slv.b.ready    := io.mst.b.ready
